@@ -1,140 +1,206 @@
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from "react-native";
 import { useState } from "react";
-import {
-  Alert,
-  Button,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { router } from "expo-router";
-import { apiPost } from "../src/api/http";
-import { setSessionToken } from "../src/auth/session";
-import { signInWithGoogle } from "../src/auth/oauth";
+import { useRouter } from "expo-router";
+import Constants from 'expo-constants';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuth } from './_layout';
 
-type LoginResponse = {
-  ok: true;
-  user: {
-    id: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    provider: "password" | "google" | "microsoft" | "apple";
-    role?: string;
-  };
-  accessToken: string;
-};
+const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL || 'http://localhost:3000';
 
 export default function LoginScreen() {
+  const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [step, setStep] = useState<"EMAIL" | "OTP">("EMAIL");
+  const [isLoading, setIsLoading] = useState(false);
 
-  async function handleEmailLogin() {
-    if (!email.trim() || !password) {
-      Alert.alert("Missing information", "Enter your email and password.");
+  const handleRequestOtp = async () => {
+    if (!email || !email.includes('@')) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
 
+    setIsLoading(true);
     try {
-      setBusy(true);
-
-      const result = await apiPost<LoginResponse>("/auth/login", {
-        email: email.trim(),
-        password,
+      const res = await fetch(`${API_BASE_URL}/api/mobile/auth/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
       });
 
-      await setSessionToken(result.accessToken);
-      router.replace("/");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to request OTP");
+      }
+
+      // Move to next step regardless to prevent email enumeration visually
+      setStep("OTP");
     } catch (error: any) {
-      Alert.alert("Login failed", error?.message ?? String(error));
+      Alert.alert("Error", error.message);
     } finally {
-      setBusy(false);
+      setIsLoading(false);
     }
-  }
+  };
 
-  async function handleGoogleLogin() {
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      Alert.alert("Invalid Code", "Please enter the 6-digit code.");
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      setBusy(true);
-
-      const idToken = await signInWithGoogle();
-
-      const result = await apiPost<LoginResponse>("/auth/oauth/mobile", {
-        provider: "google",
-        idToken,
+      const res = await fetch(`${API_BASE_URL}/api/mobile/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), code: otpCode.trim() }),
       });
 
-      await setSessionToken(result.accessToken);
-      router.replace("/");
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Invalid verification code");
+      }
+
+      // Save token and user in global context
+      await signIn(data.token, data.user);
+
+      // Context routing logic will automatically take us to /(tabs)
     } catch (error: any) {
-      Alert.alert("Google sign-in failed", error?.message ?? String(error));
+      Alert.alert("Error", error.message);
     } finally {
-      setBusy(false);
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Sign in</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#ffffff' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={{ flex: 1, justifyContent: 'center', padding: 32 }}>
 
-      <Text style={styles.label}>Email</Text>
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={styles.input}
-        editable={!busy}
-      />
+        {/* Logo / Header Area */}
+        <View style={{ alignItems: 'center', marginBottom: 48 }}>
+          <View style={{ backgroundColor: '#EEF2FF', padding: 20, borderRadius: 28, marginBottom: 20 }}>
+            <MaterialCommunityIcons name="hospital-building" size={48} color="#4F46E5" />
+          </View>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 8 }}>Pristine Staffing</Text>
+          <Text style={{ fontSize: 16, color: '#6B7280', textAlign: 'center' }}>
+            {step === "EMAIL" ? "Enter your staff email to continue" : "Check your email for the 6-digit code"}
+          </Text>
+        </View>
 
-      <Text style={styles.label}>Password</Text>
-      <TextInput
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={styles.input}
-        editable={!busy}
-      />
+        {/* Form Area */}
+        {step === "EMAIL" ? (
+          <View>
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                paddingHorizontal: 20,
+                paddingVertical: 16,
+                borderRadius: 16,
+                fontSize: 16,
+                color: '#111827',
+                marginBottom: 24,
+                borderWidth: 1,
+                borderColor: '#E5E7EB'
+              }}
+              placeholder="Email Address"
+              placeholderTextColor="#9CA3AF"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!isLoading}
+            />
 
-      <View style={styles.spacer} />
-      <Button
-        title={busy ? "Signing in..." : "Sign in with Email"}
-        onPress={handleEmailLogin}
-        disabled={busy}
-      />
+            <TouchableOpacity
+              onPress={handleRequestOtp}
+              disabled={isLoading}
+              style={{
+                backgroundColor: '#4F46E5',
+                paddingVertical: 18,
+                borderRadius: 16,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                elevation: 2,
+                shadowColor: '#4F46E5',
+                shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: 8
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Send Login Code</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <TextInput
+              style={{
+                backgroundColor: '#F3F4F6',
+                paddingHorizontal: 20,
+                paddingVertical: 16,
+                borderRadius: 16,
+                fontSize: 24,
+                letterSpacing: 8,
+                textAlign: 'center',
+                color: '#111827',
+                marginBottom: 24,
+                borderWidth: 1,
+                borderColor: '#E5E7EB'
+              }}
+              placeholder="000000"
+              placeholderTextColor="#D1D5DB"
+              value={otpCode}
+              onChangeText={setOtpCode}
+              keyboardType="number-pad"
+              maxLength={6}
+              editable={!isLoading}
+            />
 
-      <View style={styles.spacer} />
-      <Button
-        title="Continue with Google"
-        onPress={handleGoogleLogin}
-        disabled={busy}
-      />
-    </View>
+            <TouchableOpacity
+              onPress={handleVerifyOtp}
+              disabled={isLoading}
+              style={{
+                backgroundColor: '#10B981',
+                paddingVertical: 18,
+                borderRadius: 16,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                elevation: 2,
+                shadowColor: '#10B981',
+                shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: 8,
+                marginBottom: 16
+              }}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Verify & Log In</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setStep("EMAIL")}
+              style={{ alignItems: 'center', padding: 8 }}
+            >
+              <Text style={{ color: '#6B7280', fontSize: 14, fontWeight: '600' }}>Wrong email? Go back</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+      </View>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginBottom: 20,
-  },
-  label: {
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  spacer: {
-    height: 12,
-  },
-});

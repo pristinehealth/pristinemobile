@@ -15,32 +15,14 @@ export default function TimesheetDetailScreen() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch the timesheet slice. 
-                // Note: Realistically, we should make a `/api/mobile/timesheets/[id]` endpoint for O(1) fetching,
-                // but since the mobile app keeps a local cache in the paginated list, fetching the top page generally works 
-                // for immediate drill-downs. For robustness, we will hit the global sync-backed Tasks list if we must.
-
-                // Fetch the specific task that owns this timesheet to get its full data
-                const res = await fetchWithAuth(`/api/mobile/tasks`);
+                // Call the dedicated timesheet-by-ID endpoint instead of scanning the task list.
+                // This works regardless of which paginated page the parent task lives on.
+                const res = await fetchWithAuth(`/api/mobile/timesheets/${id}`);
                 const json = (await res.json()) as any;
 
-                if (json.success && json.data) {
-                    let foundTs = null;
-                    let foundTask = null;
-
-                    for (const t of json.data) {
-                        if (t.timesheets && t.timesheets.length > 0) {
-                            const ts = t.timesheets.find((ts: any) => String(ts.id) === String(id));
-                            if (ts) {
-                                foundTs = ts;
-                                foundTask = t;
-                                break;
-                            }
-                        }
-                    }
-
-                    setTimesheet(foundTs);
-                    setTask(foundTask);
+                if (json.success) {
+                    setTimesheet(json.timesheet);
+                    setTask(json.task);
                 }
             } catch (err) {
                 console.error("Failed to load timesheet details", err);
@@ -56,7 +38,7 @@ export default function TimesheetDetailScreen() {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: '#F9FAFB' }}>
                 <Stack.Screen options={{ title: "Loading..." }} />
-                <ActivityIndicator size="large" color="#4F46E5" />
+                <ActivityIndicator size="large" color="#3B6BB5" />
             </View>
         );
     }
@@ -67,7 +49,7 @@ export default function TimesheetDetailScreen() {
                 <Stack.Screen options={{ title: "Not Found" }} />
                 <Text style={{ fontSize: 18, color: '#6B7280' }}>Timesheet not found.</Text>
                 <TouchableOpacity style={{ marginTop: 16 }} onPress={() => router.back()}>
-                    <Text style={{ color: '#4F46E5', fontSize: 16, fontWeight: '600' }}>Go Back</Text>
+                    <Text style={{ color: '#3B6BB5', fontSize: 16, fontWeight: '600' }}>Go Back</Text>
                 </TouchableOpacity>
             </View>
         );

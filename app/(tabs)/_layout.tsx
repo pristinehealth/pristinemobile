@@ -6,7 +6,7 @@ import { useAuth } from "../_layout";
 
 export default function TabLayout() {
   const scheme = useColorScheme();
-  const activeColor = scheme === "dark" ? "#818cf8" : "#4F46E5"; // Indigo color matching app theme
+  const activeColor = '#F0A030'; // Pristine Health brand orange (accent)
   const { signOut } = useAuth();
 
   const handleLogout = () => {
@@ -33,7 +33,7 @@ export default function TabLayout() {
         headerShown: true, // We will show it natively now
         headerShadowVisible: false,
         headerStyle: {
-          backgroundColor: '#4F46E5', // Theme color
+          backgroundColor: '#3B6BB5', // Theme color
         },
         headerTintColor: '#ffffff',
         headerTitleStyle: {
@@ -54,16 +54,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="view-dashboard" size={26} color={color} />
           )
-        }}
-      />
-
-      <Tabs.Screen
-        name="tasks/[id]"
-        options={{
-          href: null, // Hide this from the bottom tab bar completely
-          headerTitle: "Shift Details",
-          title: "Details",
-          // The back button is handled natively by Expo Router Stack, but we'll configure it in the component if needed
         }}
       />
 

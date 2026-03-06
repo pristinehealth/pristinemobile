@@ -82,7 +82,7 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   if (!isReady) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color="#3B6BB5" />
       </View>
     );
   }
@@ -103,6 +103,29 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false, presentation: "fullScreenModal" }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
         <Stack.Screen name="timesheet-modal" options={{ presentation: "modal", headerShown: false }} />
+        <Stack.Screen
+          name="tasks/[id]"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Shifts",
+            headerTintColor: "#ffffff",
+            headerStyle: { backgroundColor: "#3B6BB5" },
+            headerTitleStyle: { fontWeight: "700", color: "#ffffff" },
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name="tasks/end-shift"
+          options={{
+            headerShown: true,
+            title: "End Shift",
+            headerBackTitle: "Back",
+            headerTintColor: "#ffffff",
+            headerStyle: { backgroundColor: "#3B6BB5" },
+            headerTitleStyle: { fontWeight: "700", color: "#ffffff" },
+            headerShadowVisible: false,
+          }}
+        />
       </Stack>
     </AuthProvider>
   );

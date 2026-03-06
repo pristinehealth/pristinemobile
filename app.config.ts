@@ -68,6 +68,11 @@ const config = {
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
+    config: {
+      googleMaps: {
+        apiKey: env["GOOGLE_MAPS_API_KEY"] || "",
+      },
+    },
   },
 
   web: {
@@ -100,6 +105,7 @@ const config = {
     GOOGLE_CLIENT_ID: requireEnv(env, "GOOGLE_CLIENT_ID"),
     MICROSOFT_CLIENT_ID: requireEnv(env, "MICROSOFT_CLIENT_ID"),
     MICROSOFT_TENANT: (env.MICROSOFT_TENANT || "common").trim(),
+    GOOGLE_MAPS_API_KEY: env["GOOGLE_MAPS_API_KEY"] || "",
   },
 };
 

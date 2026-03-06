@@ -43,7 +43,10 @@ export default function HomeTab() {
         if (currentStart === 0 || isRefresh) {
           newTasks = json.data;
         } else {
-          newTasks = [...tasks, ...json.data];
+          // Deduplicate by task id to prevent FlatList duplicate-key crashes
+          const existingIds = new Set(tasks.map((t: any) => String(t.id)));
+          const fresh = json.data.filter((t: any) => !existingIds.has(String(t.id)));
+          newTasks = [...tasks, ...fresh];
         }
 
         setTasks(newTasks);
@@ -80,6 +83,10 @@ export default function HomeTab() {
       }
     } catch (err) {
       console.error("Failed to load tasks", err);
+      if (currentStart === 0 || isRefresh) {
+        setTasks([]);
+      }
+      setHasMore(false);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -183,6 +190,15 @@ export default function HomeTab() {
                 </Text>
               </View>
             )}
+            {item.project_data?.extracted_address && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <MaterialCommunityIcons name="map-marker-outline" size={14} color="#6B7280" style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                  {item.project_data.extracted_address}
+                  {item.project_data.extracted_city ? `, ${item.project_data.extracted_city}` : ''}
+                </Text>
+              </View>
+            )}
           </View>
           <View style={{
             backgroundColor: statusConfig.bg,
@@ -266,13 +282,13 @@ export default function HomeTab() {
       <TouchableOpacity
         onPress={() => setActiveFilter(filterKey)}
         style={{
-          backgroundColor: isActive ? '#4F46E5' : '#ffffff',
+          backgroundColor: isActive ? '#3B6BB5' : '#ffffff',
           paddingHorizontal: 16,
           paddingVertical: 8,
           borderRadius: 20,
           marginRight: 8,
           borderWidth: 1,
-          borderColor: isActive ? '#4F46E5' : '#E5E7EB',
+          borderColor: isActive ? '#3B6BB5' : '#E5E7EB',
           flexDirection: 'row',
           alignItems: 'center'
         }}
@@ -305,30 +321,30 @@ export default function HomeTab() {
       {/* Content */}
       {loading ? (
         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color="#3B6BB5" />
         </View>
       ) : (
         <FlatList
           data={filteredTasks}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `task-${String(item.id)}-${index}`}
           renderItem={renderItem}
           contentContainerStyle={{ paddingTop: 16, paddingBottom: 40 }}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B6BB5" />
           }
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={
             fetchingMore ? (
               <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                <ActivityIndicator size="small" color="#4F46E5" />
+                <ActivityIndicator size="small" color="#3B6BB5" />
               </View>
             ) : null
           }
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 100 }}>
-              <View style={{ backgroundColor: '#EEF2FF', padding: 24, borderRadius: 100, marginBottom: 20 }}>
-                <MaterialCommunityIcons name="calendar-check" size={48} color="#4F46E5" />
+              <View style={{ backgroundColor: '#EEF3FB', padding: 24, borderRadius: 100, marginBottom: 20 }}>
+                <MaterialCommunityIcons name="calendar-check" size={48} color="#3B6BB5" />
               </View>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 }}>
                 No Shifts Found

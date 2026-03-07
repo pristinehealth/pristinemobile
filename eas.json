@@ -1,0 +1,28 @@
+{
+    "cli": {
+        "version": ">= 18.1.0",
+        "appVersionSource": "remote"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal"
+        },
+        "preview": {
+            "distribution": "internal"
+        },
+        "production": {
+            "autoIncrement": true,
+            "env": {
+                "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+                "APP_SCHEME": "mobileapp",
+                "API_BASE_URL": "https://backend-vnu9.onrender.com",
+                "MICROSOFT_CLIENT_ID": "your_microsoft_client_id",
+                "MICROSOFT_TENANT": "common"
+            }
+        }
+    },
+    "submit": {
+        "production": {}
+    }
+}

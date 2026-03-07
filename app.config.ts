@@ -57,7 +57,7 @@ const config = {
 
   ios: {
     supportsTablet: true,
-    bundleIdentifier: "com.anonymous.mobileapp",
+    bundleIdentifier: "com.pristinehealth.mobileapp",
     infoPlist: {
       // Allow all HTTP/HTTPS traffic during development and to Render.com
       // (iOS App Transport Security would otherwise block non-HTTPS or untrusted certs)
@@ -68,17 +68,12 @@ const config = {
   },
 
   android: {
-    package: "com.anonymous.mobileapp",
+    package: "com.pristinehealth.mobileapp",
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
-    },
-    config: {
-      googleMaps: {
-        apiKey: env["GOOGLE_MAPS_API_KEY"] || "",
-      },
     },
   },
 
@@ -108,11 +103,13 @@ const config = {
   },
 
   extra: {
+    "eas": {
+      "projectId": "80e94873-d4cf-4a07-a36a-69fc5b81a310"
+    },
     API_BASE_URL: requireEnv(env, "API_BASE_URL"),
     GOOGLE_CLIENT_ID: requireEnv(env, "GOOGLE_CLIENT_ID"),
     MICROSOFT_CLIENT_ID: requireEnv(env, "MICROSOFT_CLIENT_ID"),
     MICROSOFT_TENANT: (env.MICROSOFT_TENANT || "common").trim(),
-    GOOGLE_MAPS_API_KEY: env["GOOGLE_MAPS_API_KEY"] || "",
   },
 };
 

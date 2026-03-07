@@ -3,6 +3,7 @@ import { Stack, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../lib/api";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { getSocket, joinStaffRoom } from '../../lib/socket';
 
 export default function TimesheetsScreen() {
     const [timesheets, setTimesheets] = useState<any[]>([]);
@@ -49,6 +50,10 @@ export default function TimesheetsScreen() {
             }
         } catch (err) {
             console.error("Failed to load timesheets", err);
+            if (currentStart === 0 || isRefresh) {
+                setTimesheets([]);
+            }
+            setHasMore(false);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -59,6 +64,31 @@ export default function TimesheetsScreen() {
     useEffect(() => {
         fetchAllData(false, 0);
     }, []);
+
+    // ── Real-time socket listener ────────────────────────────────────────
+    useEffect(() => {
+        let active = true;
+        const handler = () => {
+            if (!active) return;
+            console.log('[Socket.IO] shift:ended received — refreshing timesheets');
+            setStartIdx(0);
+            setHasMore(true);
+            fetchAllData(true, 0);
+        };
+        (async () => {
+            await joinStaffRoom();        // ensures socket is authenticated & connected
+            const socket = getSocket();
+            if (!socket || !active) return;
+            socket.on('shift:ended', handler);
+        })();
+        return () => {
+            active = false;
+            const socket = getSocket();
+            socket?.off('shift:ended', handler);
+        };
+    }, []);
+    // ────────────────────────────────────────────────────────────────────
+
 
     const onRefresh = () => {
         setHasMore(true);
@@ -91,8 +121,8 @@ export default function TimesheetsScreen() {
                             {s.toLocaleDateString()}
                         </Text>
                     </View>
-                    <View style={{ backgroundColor: '#EEF2FF', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 12 }}>
-                        <Text style={{ color: '#4F46E5', fontWeight: '800', fontSize: 16 }}>{hours}h</Text>
+                    <View style={{ backgroundColor: '#EEF3FB', paddingVertical: 6, paddingHorizontal: 16, borderRadius: 12 }}>
+                        <Text style={{ color: '#3B6BB5', fontWeight: '800', fontSize: 16 }}>{hours}h</Text>
                     </View>
                 </View>
 
@@ -124,7 +154,7 @@ export default function TimesheetsScreen() {
 
             {loading && !refreshing ? (
                 <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color="#4F46E5" />
+                    <ActivityIndicator size="large" color="#3B6BB5" />
                 </View>
             ) : (
                 <FlatList
@@ -133,14 +163,14 @@ export default function TimesheetsScreen() {
                     renderItem={renderItem}
                     contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 60 }}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B6BB5" />
                     }
                     onEndReached={handleLoadMore}
                     onEndReachedThreshold={0.5}
                     ListFooterComponent={
                         fetchingMore ? (
                             <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                                <ActivityIndicator size="small" color="#4F46E5" />
+                                <ActivityIndicator size="small" color="#3B6BB5" />
                             </View>
                         ) : null
                     }

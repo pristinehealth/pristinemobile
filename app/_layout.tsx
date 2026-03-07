@@ -1,7 +1,9 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState, createContext, useContext } from "react";
 import * as SecureStore from 'expo-secure-store';
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, Alert } from "react-native";
+import { disconnectSocket, joinStaffRoom } from '../lib/socket';
+import { onSessionExpired } from '../lib/auth-events';
 
 // 1. Create a simple Auth Context
 type AuthContextType = {
@@ -30,12 +32,10 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Load token on boot
     async function loadToken() {
       try {
         const storedToken = await SecureStore.getItemAsync("auth_token");
         const storedUser = await SecureStore.getItemAsync("user_data");
-
         if (storedToken) {
           setToken(storedToken);
           if (storedUser) setUser(JSON.parse(storedUser));
@@ -47,6 +47,23 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     loadToken();
+  }, []);
+
+  // Register session-expiry handler so any auth failure (socket or 401)
+  // automatically signs the user out without them having to do it manually.
+  useEffect(() => {
+    onSessionExpired(async () => {
+      await SecureStore.deleteItemAsync("auth_token");
+      await SecureStore.deleteItemAsync("user_data");
+      setToken(null);
+      setUser(null);
+      disconnectSocket();
+      Alert.alert(
+        "Session Expired",
+        "Your session has expired. Please log in again.",
+        [{ text: "OK" }]
+      );
+    });
   }, []);
 
   // 3. Routing Logic based on Auth State
@@ -70,6 +87,8 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(newUser);
     await SecureStore.setItemAsync("auth_token", newToken);
     await SecureStore.setItemAsync("user_data", JSON.stringify(newUser));
+    // Join the socket room for this staff member immediately after login
+    joinStaffRoom();
   };
 
   const signOut = async () => {
@@ -77,12 +96,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     await SecureStore.deleteItemAsync("auth_token");
     await SecureStore.deleteItemAsync("user_data");
+    // Tear down the socket so we don't receive events for the old user
+    disconnectSocket();
   };
 
   if (!isReady) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color="#3B6BB5" />
       </View>
     );
   }
@@ -103,6 +124,30 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false, presentation: "fullScreenModal" }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
         <Stack.Screen name="timesheet-modal" options={{ presentation: "modal", headerShown: false }} />
+        <Stack.Screen
+          name="tasks/[id]"
+          options={{
+            headerShown: true,
+            title: 'Shift Details',
+            headerBackTitle: "Shifts",
+            headerTintColor: "#ffffff",
+            headerStyle: { backgroundColor: "#3B6BB5" },
+            headerTitleStyle: { fontWeight: "700", color: "#ffffff" },
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name="tasks/end-shift"
+          options={{
+            headerShown: true,
+            title: "End Shift",
+            headerBackTitle: "Back",
+            headerTintColor: "#ffffff",
+            headerStyle: { backgroundColor: "#3B6BB5" },
+            headerTitleStyle: { fontWeight: "700", color: "#ffffff" },
+            headerShadowVisible: false,
+          }}
+        />
       </Stack>
     </AuthProvider>
   );

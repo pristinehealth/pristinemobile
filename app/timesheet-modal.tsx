@@ -46,7 +46,7 @@ export default function TimesheetModalScreen() {
     if (loading) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: '#F9FAFB' }}>
-                <ActivityIndicator size="large" color="#4F46E5" />
+                <ActivityIndicator size="large" color="#3B6BB5" />
             </View>
         );
     }
@@ -59,7 +59,7 @@ export default function TimesheetModalScreen() {
                 <Text style={{ fontSize: 15, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
                     We couldn't find a completed timesheet record for this shift.
                 </Text>
-                <TouchableOpacity style={{ backgroundColor: '#4F46E5', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }} onPress={() => router.back()}>
+                <TouchableOpacity style={{ backgroundColor: '#3B6BB5', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }} onPress={() => router.back()}>
                     <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600' }}>Close Modal</Text>
                 </TouchableOpacity>
             </View>

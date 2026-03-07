@@ -36,8 +36,8 @@ export default function ProfileTab() {
 
     const InfoRow = ({ icon, label, value }: { icon: any, label: string, value: string }) => (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-            <View style={{ backgroundColor: '#EEF2FF', padding: 12, borderRadius: 12, marginRight: 16 }}>
-                <MaterialCommunityIcons name={icon} size={24} color="#4F46E5" />
+            <View style={{ backgroundColor: '#EEF3FB', padding: 12, borderRadius: 12, marginRight: 16 }}>
+                <MaterialCommunityIcons name={icon} size={24} color="#3B6BB5" />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 4, fontWeight: '600', textTransform: 'uppercase' }}>{label}</Text>
@@ -50,13 +50,13 @@ export default function ProfileTab() {
         <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
             {loading ? (
                 <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color="#4F46E5" />
+                    <ActivityIndicator size="large" color="#3B6BB5" />
                 </View>
             ) : (
                 <ScrollView
                     contentContainerStyle={{ padding: 24, paddingBottom: 60 }}
                     refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F46E5" />
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#3B6BB5" />
                     }
                 >
                     {/* Avatar Header */}
@@ -65,12 +65,12 @@ export default function ProfileTab() {
                             width: 100,
                             height: 100,
                             borderRadius: 50,
-                            backgroundColor: '#4F46E5',
+                            backgroundColor: '#3B6BB5',
                             justifyContent: 'center',
                             alignItems: 'center',
                             marginBottom: 16,
                             elevation: 4,
-                            shadowColor: '#4F46E5',
+                            shadowColor: '#3B6BB5',
                             shadowOpacity: 0.3,
                             shadowOffset: { width: 0, height: 4 },
                             shadowRadius: 12
@@ -82,8 +82,8 @@ export default function ProfileTab() {
                         <Text style={{ fontSize: 24, fontWeight: '800', color: '#111827', marginBottom: 8 }}>
                             {profile?.firstname} {profile?.lastname}
                         </Text>
-                        <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                            <Text style={{ color: '#4F46E5', fontSize: 14, fontWeight: '700' }}>
+                        <View style={{ backgroundColor: '#EEF3FB', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                            <Text style={{ color: '#3B6BB5', fontSize: 14, fontWeight: '700' }}>
                                 {profile?.role ? 'Role ID: ' + profile.role : 'Staff Member'}
                             </Text>
                         </View>

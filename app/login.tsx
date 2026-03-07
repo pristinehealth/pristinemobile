@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image } from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import Constants from 'expo-constants';
@@ -23,19 +23,22 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/mobile/auth/request-otp`, {
+      const url = `${API_BASE_URL}/api/mobile/auth/request-otp`;
+      console.log(`[Login] POST ${url}`);
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
       });
-
-      const data = await res.json();
+      console.log(`[Login] request-otp ← ${res.status}`);
+      const data = await res.json() as any;
+      console.log(`[Login] request-otp body:`, JSON.stringify(data));
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to request OTP");
       }
 
-      // Move to next step regardless to prevent email enumeration visually
+      // Only advance to OTP entry if the server confirmed the email was found
       setStep("OTP");
     } catch (error: any) {
       Alert.alert("Error", error.message);
@@ -52,13 +55,16 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/mobile/auth/verify-otp`, {
+      const url = `${API_BASE_URL}/api/mobile/auth/verify-otp`;
+      console.log(`[Login] POST ${url}`);
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), code: otpCode.trim() }),
       });
+      console.log(`[Login] verify-otp ← ${res.status}`);
 
-      const data = await res.json();
+      const data = await res.json() as any;
 
       if (!res.ok) {
         throw new Error(data.error || "Invalid verification code");
@@ -82,13 +88,13 @@ export default function LoginScreen() {
     >
       <View style={{ flex: 1, justifyContent: 'center', padding: 32 }}>
 
-        {/* Logo / Header Area */}
+        {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
-          <View style={{ backgroundColor: '#EEF2FF', padding: 20, borderRadius: 28, marginBottom: 20 }}>
-            <MaterialCommunityIcons name="hospital-building" size={48} color="#4F46E5" />
-          </View>
-          <Text style={{ fontSize: 28, fontWeight: '800', color: '#111827', marginBottom: 8 }}>Pristine Staffing</Text>
-          <Text style={{ fontSize: 16, color: '#6B7280', textAlign: 'center' }}>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={{ width: 200, height: 100, resizeMode: 'contain', marginBottom: 16 }}
+          />
+          <Text style={{ fontSize: 15, color: '#6B7280', textAlign: 'center' }}>
             {step === "EMAIL" ? "Enter your staff email to continue" : "Check your email for the 6-digit code"}
           </Text>
         </View>
@@ -121,14 +127,14 @@ export default function LoginScreen() {
               onPress={handleRequestOtp}
               disabled={isLoading}
               style={{
-                backgroundColor: '#4F46E5',
+                backgroundColor: '#F0A030',
                 paddingVertical: 18,
                 borderRadius: 16,
                 alignItems: 'center',
                 flexDirection: 'row',
                 justifyContent: 'center',
                 elevation: 2,
-                shadowColor: '#4F46E5',
+                shadowColor: '#F0A030',
                 shadowOpacity: 0.3,
                 shadowOffset: { width: 0, height: 4 },
                 shadowRadius: 8
@@ -170,14 +176,14 @@ export default function LoginScreen() {
               onPress={handleVerifyOtp}
               disabled={isLoading}
               style={{
-                backgroundColor: '#10B981',
+                backgroundColor: '#F0A030',
                 paddingVertical: 18,
                 borderRadius: 16,
                 alignItems: 'center',
                 flexDirection: 'row',
                 justifyContent: 'center',
                 elevation: 2,
-                shadowColor: '#10B981',
+                shadowColor: '#F0A030',
                 shadowOpacity: 0.3,
                 shadowOffset: { width: 0, height: 4 },
                 shadowRadius: 8,

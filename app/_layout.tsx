@@ -71,13 +71,14 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!isReady) return;
 
     const inAuthGroup = segments[0] === '(tabs)';
-    const isLoginScreen = segments[0] === 'login';
+    const AUTH_SCREENS = ['login', 'signup', 'forgot-password', 'verify-email'];
+    const isAuthScreen = AUTH_SCREENS.includes(segments[0] as string);
 
     if (!token && inAuthGroup) {
-      // Redirect to login if unauthenticated
+      // Redirect to login if unauthenticated and trying to access protected tabs
       router.replace('/login');
-    } else if (token && isLoginScreen) {
-      // Redirect to tabs if authenticated
+    } else if (token && isAuthScreen) {
+      // Redirect to tabs if already authenticated and trying to visit auth screens
       router.replace('/(tabs)');
     }
   }, [token, segments, isReady]);
@@ -121,7 +122,10 @@ export default function RootLayout() {
     <AuthProvider>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false, presentation: "fullScreenModal" }} />
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-email" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: "modal" }} />
         <Stack.Screen name="timesheet-modal" options={{ presentation: "modal", headerShown: false }} />
         <Stack.Screen

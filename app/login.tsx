@@ -1,4 +1,7 @@
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image } from "react-native";
+import {
+  View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView,
+  Platform, ActivityIndicator, Alert, Image, ScrollView
+} from "react-native";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import Constants from 'expo-constants';
@@ -11,71 +14,57 @@ export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [step, setStep] = useState<"EMAIL" | "OTP">("EMAIL");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleRequestOtp = async () => {
+  const handleLogin = async () => {
     if (!email || !email.includes('@')) {
       Alert.alert("Invalid Email", "Please enter a valid email address.");
       return;
     }
-
-    setIsLoading(true);
-    try {
-      const url = `${API_BASE_URL}/api/mobile/auth/request-otp`;
-      console.log(`[Login] POST ${url}`);
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      console.log(`[Login] request-otp ← ${res.status}`);
-      const data = await res.json() as any;
-      console.log(`[Login] request-otp body:`, JSON.stringify(data));
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to request OTP");
-      }
-
-      // Only advance to OTP entry if the server confirmed the email was found
-      setStep("OTP");
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otpCode || otpCode.length !== 6) {
-      Alert.alert("Invalid Code", "Please enter the 6-digit code.");
+    if (!password) {
+      Alert.alert("Password Required", "Please enter your password.");
       return;
     }
 
     setIsLoading(true);
     try {
-      const url = `${API_BASE_URL}/api/mobile/auth/verify-otp`;
-      console.log(`[Login] POST ${url}`);
-      const res = await fetch(url, {
+      const res = await fetch(`${API_BASE_URL}/api/mobile/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: otpCode.trim() }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      console.log(`[Login] verify-otp ← ${res.status}`);
 
       const data = await res.json() as any;
 
-      if (!res.ok) {
-        throw new Error(data.error || "Invalid verification code");
+      if (res.status === 403 && data.error === 'EMAIL_NOT_VERIFIED') {
+        // Drop them into signup verification screen with email prefilled
+        Alert.alert(
+          "Email Not Verified",
+          "Your account isn't verified yet. We'll send a new code to your email.",
+          [{
+            text: "Send Code",
+            onPress: async () => {
+              await fetch(`${API_BASE_URL}/api/mobile/auth/request-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email.trim().toLowerCase(), purpose: 'verification' }),
+              });
+              router.push(`/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+            }
+          }, { text: "Cancel", style: "cancel" }]
+        );
+        return;
       }
 
-      // Save token and user in global context
-      await signIn(data.token, data.user);
+      if (!res.ok) {
+        throw new Error(data.error || "Login failed. Please try again.");
+      }
 
-      // Context routing logic will automatically take us to /(tabs)
+      await signIn(data.token, data.user);
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      Alert.alert("Login Failed", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -86,8 +75,10 @@ export default function LoginScreen() {
       style={{ flex: 1, backgroundColor: '#ffffff' }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={{ flex: 1, justifyContent: 'center', padding: 32 }}>
-
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 32 }}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Logo */}
         <View style={{ alignItems: 'center', marginBottom: 48 }}>
           <Image
@@ -95,118 +86,107 @@ export default function LoginScreen() {
             style={{ width: 200, height: 100, resizeMode: 'contain', marginBottom: 16 }}
           />
           <Text style={{ fontSize: 15, color: '#6B7280', textAlign: 'center' }}>
-            {step === "EMAIL" ? "Enter your staff email to continue" : "Check your email for the 6-digit code"}
+            Sign in to your staff account
           </Text>
         </View>
 
-        {/* Form Area */}
-        {step === "EMAIL" ? (
-          <View>
+        {/* Email */}
+        <TextInput
+          style={{
+            backgroundColor: '#F3F4F6',
+            paddingHorizontal: 20,
+            paddingVertical: 16,
+            borderRadius: 16,
+            fontSize: 16,
+            color: '#111827',
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: '#E5E7EB'
+          }}
+          placeholder="Email Address"
+          placeholderTextColor="#9CA3AF"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          editable={!isLoading}
+        />
+
+        {/* Password */}
+        <View style={{ marginBottom: 12 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F3F4F6',
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#E5E7EB',
+            paddingHorizontal: 20,
+          }}>
             <TextInput
-              style={{
-                backgroundColor: '#F3F4F6',
-                paddingHorizontal: 20,
-                paddingVertical: 16,
-                borderRadius: 16,
-                fontSize: 16,
-                color: '#111827',
-                marginBottom: 24,
-                borderWidth: 1,
-                borderColor: '#E5E7EB'
-              }}
-              placeholder="Email Address"
+              style={{ flex: 1, paddingVertical: 16, fontSize: 16, color: '#111827' }}
+              placeholder="Password"
               placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
-              keyboardType="email-address"
               editable={!isLoading}
             />
-
-            <TouchableOpacity
-              onPress={handleRequestOtp}
-              disabled={isLoading}
-              style={{
-                backgroundColor: '#F0A030',
-                paddingVertical: 18,
-                borderRadius: 16,
-                alignItems: 'center',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                elevation: 2,
-                shadowColor: '#F0A030',
-                shadowOpacity: 0.3,
-                shadowOffset: { width: 0, height: 4 },
-                shadowRadius: 8
-              }}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Send Login Code</Text>
-              )}
+            <TouchableOpacity onPress={() => setShowPassword(p => !p)} style={{ padding: 4 }}>
+              <MaterialCommunityIcons
+                name={showPassword ? "eye-off" : "eye"}
+                size={22}
+                color="#9CA3AF"
+              />
             </TouchableOpacity>
           </View>
-        ) : (
-          <View>
-            <TextInput
-              style={{
-                backgroundColor: '#F3F4F6',
-                paddingHorizontal: 20,
-                paddingVertical: 16,
-                borderRadius: 16,
-                fontSize: 24,
-                letterSpacing: 8,
-                textAlign: 'center',
-                color: '#111827',
-                marginBottom: 24,
-                borderWidth: 1,
-                borderColor: '#E5E7EB'
-              }}
-              placeholder="000000"
-              placeholderTextColor="#D1D5DB"
-              value={otpCode}
-              onChangeText={setOtpCode}
-              keyboardType="number-pad"
-              maxLength={6}
-              editable={!isLoading}
-            />
+        </View>
 
-            <TouchableOpacity
-              onPress={handleVerifyOtp}
-              disabled={isLoading}
-              style={{
-                backgroundColor: '#F0A030',
-                paddingVertical: 18,
-                borderRadius: 16,
-                alignItems: 'center',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                elevation: 2,
-                shadowColor: '#F0A030',
-                shadowOpacity: 0.3,
-                shadowOffset: { width: 0, height: 4 },
-                shadowRadius: 8,
-                marginBottom: 16
-              }}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Verify & Log In</Text>
-              )}
-            </TouchableOpacity>
+        {/* Forgot Password */}
+        <TouchableOpacity
+          onPress={() => router.push('/forgot-password')}
+          style={{ alignSelf: 'flex-end', marginBottom: 28 }}
+        >
+          <Text style={{ color: '#3B6BB5', fontSize: 14, fontWeight: '600' }}>Forgot Password?</Text>
+        </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => setStep("EMAIL")}
-              style={{ alignItems: 'center', padding: 8 }}
-            >
-              <Text style={{ color: '#6B7280', fontSize: 14, fontWeight: '600' }}>Wrong email? Go back</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* Sign In Button */}
+        <TouchableOpacity
+          onPress={handleLogin}
+          disabled={isLoading}
+          style={{
+            backgroundColor: '#F0A030',
+            paddingVertical: 18,
+            borderRadius: 16,
+            alignItems: 'center',
+            justifyContent: 'center',
+            elevation: 2,
+            shadowColor: '#F0A030',
+            shadowOpacity: 0.3,
+            shadowOffset: { width: 0, height: 4 },
+            shadowRadius: 8,
+            marginBottom: 20
+          }}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '700' }}>Sign In</Text>
+          )}
+        </TouchableOpacity>
 
-      </View>
+        {/* Create Account */}
+        <TouchableOpacity
+          onPress={() => router.push('/signup')}
+          style={{ alignItems: 'center', padding: 8 }}
+        >
+          <Text style={{ color: '#6B7280', fontSize: 14 }}>
+            New staff member?{' '}
+            <Text style={{ color: '#3B6BB5', fontWeight: '700' }}>Create Account</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

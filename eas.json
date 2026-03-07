@@ -15,7 +15,7 @@
             "autoIncrement": true,
             "env": {
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
-                "APP_SCHEME": "mobileapp",
+                "APP_SCHEME": "pristinemobile",
                 "API_BASE_URL": "https://backend-vnu9.onrender.com",
                 "MICROSOFT_CLIENT_ID": "your_microsoft_client_id",
                 "MICROSOFT_TENANT": "common"

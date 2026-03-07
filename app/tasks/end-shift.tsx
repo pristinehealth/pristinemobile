@@ -71,6 +71,20 @@ export default function EndShiftScreen() {
     const [isOutsideFacility, setIsOutsideFacility] = useState(false);
     const [locationChecked, setLocationChecked] = useState(false);
 
+    // 15-minute minimum guard
+    const activeTs = task?.timesheets?.find((ts: any) => ts.end_time === null || ts.end_time === '0' || ts.end_time === '');
+    const activeStartTime: number | null = activeTs
+        ? (/^\d+$/.test(String(activeTs.start_time))
+            ? parseInt(String(activeTs.start_time))
+            : Math.floor(new Date(String(activeTs.start_time).replace(' ', 'T')).getTime() / 1000))
+        : null;
+    const elapsedSeconds = activeStartTime ? Math.floor(Date.now() / 1000) - activeStartTime : 9999;
+    const MIN_SHIFT_SECONDS = 15 * 60;
+    const canSubmit = elapsedSeconds >= MIN_SHIFT_SECONDS;
+    const remainingStopSec = Math.max(0, MIN_SHIFT_SECONDS - elapsedSeconds);
+    const remainingStopMin = Math.floor(remainingStopSec / 60);
+    const remainingStopSecPart = remainingStopSec % 60;
+
     useEffect(() => {
         const fetchTask = async () => {
             try {
@@ -156,6 +170,12 @@ export default function EndShiftScreen() {
             return;
         }
 
+        // 15-minute minimum enforcement
+        if (!canSubmit) {
+            Alert.alert("Too Early", `You cannot stop the shift until at least 15 minutes have elapsed. Please wait ${remainingStopMin}m ${remainingStopSecPart}s more.`);
+            return;
+        }
+
         try {
             setSubmitting(true);
 
@@ -197,7 +217,7 @@ export default function EndShiftScreen() {
 
             const json = (await res.json()) as any;
             if (res.ok && json.success) {
-                Alert.alert("Shift Completed", "Timesheet successfully submitted to Perfex!");
+                Alert.alert("Shift Completed", "Timesheet successfully submitted and sent to the administrator for review.");
                 router.replace('/(tabs)');
             } else {
                 throw new Error(json.error || "Failed to complete shift");
@@ -413,11 +433,16 @@ export default function EndShiftScreen() {
                 {/* Complete Button */}
                 <TouchableOpacity
                     onPress={handleCompleteShift}
-                    disabled={submitting}
-                    style={{ backgroundColor: '#EF4444', paddingVertical: 18, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', elevation: 4, shadowColor: '#EF4444', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12 }}
+                    disabled={submitting || !canSubmit}
+                    style={{ backgroundColor: canSubmit ? '#EF4444' : '#9CA3AF', paddingVertical: 18, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', elevation: 4, shadowColor: '#EF4444', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12 }}
                 >
                     {submitting ? (
                         <ActivityIndicator color="#ffffff" />
+                    ) : !canSubmit ? (
+                        <>
+                            <MaterialCommunityIcons name="timer-sand" size={24} color="#ffffff" style={{ marginRight: 8 }} />
+                            <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: '700' }}>Wait {remainingStopMin}m {remainingStopSecPart}s</Text>
+                        </>
                     ) : (
                         <>
                             <MaterialCommunityIcons name="check-circle" size={24} color="#ffffff" style={{ marginRight: 8 }} />

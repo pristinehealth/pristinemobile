@@ -144,7 +144,7 @@ export default function TaskDetailScreen() {
                     });
                 }
                 Alert.alert(action === 'start' ? "Shift Started" : "Shift Ended",
-                    action === 'start' ? "Your time is now being tracked locally." : "Timesheet successfully submitted to Perfex!");
+                    action === 'start' ? "Your time is now being tracked locally." : "Timesheet successfully submitted and sent to the administrator for review.");
                 onRefresh();
             } else {
                 throw new Error(json.error || `Failed to ${action} shift`);
@@ -210,6 +210,21 @@ export default function TaskDetailScreen() {
     const coordDelta = (allowedRadius * 3) / 111000;
     // Enforce a minimum zoom out of ~0.002 to avoid being confusingly close
     const zoomDelta = Math.max(coordDelta, 0.002);
+
+    // --- Date Guard: shift can only start on its scheduled date ---
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+    const rawTaskDate = task?.startdate || '';
+    const taskDateStr = rawTaskDate ? String(rawTaskDate).split(' ')[0].split('T')[0] : '';
+    const isWrongDate = !isTimerRunning && taskDateStr && todayStr !== taskDateStr;
+
+    // --- 15-min stop guard ---
+    const nowUnix = Math.floor(Date.now() / 1000);
+    const elapsedSeconds = isTimerRunning && activeStartTime ? nowUnix - activeStartTime : 0;
+    const MIN_SHIFT_SECONDS = 15 * 60; // 900 s
+    const canStopShift = !isTimerRunning || elapsedSeconds >= MIN_SHIFT_SECONDS;
+    const remainingStopSec = isTimerRunning ? Math.max(0, MIN_SHIFT_SECONDS - elapsedSeconds) : 0;
+    const remainingStopMin = Math.floor(remainingStopSec / 60);
+    const remainingStopSecPart = remainingStopSec % 60;
 
     return (
         <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
@@ -300,18 +315,44 @@ export default function TaskDetailScreen() {
                     </View>
                 </View>
 
+                {/* Date-lock notice */}
+                {isWrongDate && (
+                    <View style={{ backgroundColor: '#FEF3C7', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#FDE68A' }}>
+                        <MaterialCommunityIcons name="calendar-alert" size={20} color="#D97706" style={{ marginRight: 8 }} />
+                        <Text style={{ color: '#92400E', fontSize: 14, fontWeight: '600', flex: 1 }}>
+                            Shift opens on {new Date(taskDateStr + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </Text>
+                    </View>
+                )}
+
+                {/* 15-min stop notice */}
+                {isTimerRunning && !canStopShift && (
+                    <View style={{ backgroundColor: '#EEF3FB', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#5585CC' }}>
+                        <MaterialCommunityIcons name="timer-sand" size={20} color="#3B6BB5" style={{ marginRight: 8 }} />
+                        <Text style={{ color: '#1E3A5F', fontSize: 14, fontWeight: '600', flex: 1 }}>
+                            Can stop after 15 min · {remainingStopMin}m {remainingStopSecPart}s remaining
+                        </Text>
+                    </View>
+                )}
+
                 <TouchableOpacity
                     onPress={() => {
                         if (isTimerRunning) {
+                            if (!canStopShift) {
+                                Alert.alert("Too Early", `You cannot stop the shift until at least 15 minutes have elapsed. Please wait ${remainingStopMin}m ${remainingStopSecPart}s more.`);
+                                return;
+                            }
                             router.push(`/tasks/end-shift?id=${id}`);
                         } else {
                             // Show agreement modal before starting
                             setShowAgreementModal(true);
                         }
                     }}
-                    disabled={actionLoading || verifyingLocation || task.status === "5" || isAnotherShiftActive}
+                    disabled={actionLoading || verifyingLocation || task.status === "5" || isAnotherShiftActive || (!isTimerRunning && !!isWrongDate)}
                     style={{
-                        backgroundColor: isTimerRunning ? '#EF4444' : (task.status === "5" || isAnotherShiftActive ? '#D1D5DB' : '#10B981'),
+                        backgroundColor: isTimerRunning
+                            ? (canStopShift ? '#EF4444' : '#9CA3AF')
+                            : (task.status === "5" || isAnotherShiftActive || isWrongDate ? '#D1D5DB' : '#10B981'),
                         paddingVertical: 18,
                         borderRadius: 16,
                         alignItems: 'center',
@@ -341,7 +382,7 @@ export default function TaskDetailScreen() {
                         <>
                             <MaterialCommunityIcons name="clock-start" size={24} color="#ffffff" style={{ marginRight: 8 }} />
                             <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: '700' }}>
-                                {isAnotherShiftActive ? "Another Shift Active" : "Start Shift"}
+                                {isAnotherShiftActive ? "Another Shift Active" : isWrongDate ? "Not Scheduled Today" : "Start Shift"}
                             </Text>
                         </>
                     )}
@@ -392,7 +433,7 @@ export default function TaskDetailScreen() {
                             <Marker
                                 coordinate={{ latitude: targetLat!, longitude: targetLng! }}
                                 title="Service Facility Location"
-                                description={`Shift must start within ${allowedRadius}m`}
+                                description={`Staff must be within ${allowedRadius}m · Start up to 100 min early`}
                             >
                                 <View style={{ backgroundColor: '#EF4444', padding: 8, borderRadius: 20, borderWidth: 2, borderColor: '#fff' }}>
                                     <MaterialCommunityIcons name="home-city" size={20} color="#fff" />

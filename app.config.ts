@@ -59,6 +59,8 @@ const config = {
     supportsTablet: true,
     bundleIdentifier: "com.pristinehealth.mobileapp",
     infoPlist: {
+      NSLocationWhenInUseUsageDescription:
+        "Allow mobileapp to access your location while using the app to verify shift check-in at service facilities.",
       // Allow all HTTP/HTTPS traffic during development and to Render.com
       // (iOS App Transport Security would otherwise block non-HTTPS or untrusted certs)
       NSAppTransportSecurity: {
@@ -69,6 +71,15 @@ const config = {
 
   android: {
     package: "com.pristinehealth.mobileapp",
+    permissions: [
+      "ACCESS_COARSE_LOCATION",
+      "ACCESS_FINE_LOCATION",
+    ],
+    config: {
+      googleMaps: {
+        apiKey: (env.GOOGLE_MAPS_API_KEY || "").trim(),
+      },
+    },
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",

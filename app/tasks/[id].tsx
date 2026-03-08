@@ -196,9 +196,18 @@ export default function TaskDetailScreen() {
     const lngField = customFields.find((f: any) => f.label?.toLowerCase().includes("longitude"));
     const targetLat = latField?.value ? parseFloat(latField.value) : null;
     const targetLng = lngField?.value ? parseFloat(lngField.value) : null;
-    const hasCoordinates = targetLat !== null && !isNaN(targetLat) && targetLng !== null && !isNaN(targetLng);
+    const hasCoordinates =
+        targetLat !== null &&
+        Number.isFinite(targetLat) &&
+        targetLng !== null &&
+        Number.isFinite(targetLng) &&
+        targetLat >= -90 &&
+        targetLat <= 90 &&
+        targetLng >= -180 &&
+        targetLng <= 180;
     const radiusField = customFields.find((f: any) => f.label?.toLowerCase().includes("radius"));
-    const allowedRadius = radiusField && !isNaN(parseFloat(radiusField.value)) ? parseFloat(radiusField.value) : 50;
+    const rawRadius = radiusField && !isNaN(parseFloat(radiusField.value)) ? parseFloat(radiusField.value) : 50;
+    const allowedRadius = Number.isFinite(rawRadius) && rawRadius > 0 ? rawRadius : 50;
 
     const addressField = customFields.find((f: any) => f.label?.toLowerCase().includes("address"));
     const cityField = customFields.find((f: any) => f.label?.toLowerCase().includes("city"));
@@ -421,7 +430,7 @@ export default function TaskDetailScreen() {
                                 longitudeDelta: zoomDelta,
                             }}
                             showsUserLocation={locationPermission}
-                            showsMyLocationButton={true}
+                            showsMyLocationButton={locationPermission}
                         >
                             <Circle
                                 center={{ latitude: targetLat!, longitude: targetLng! }}

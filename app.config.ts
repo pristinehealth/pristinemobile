@@ -77,7 +77,7 @@ const config = {
     ],
     config: {
       googleMaps: {
-        apiKey: (env.GOOGLE_MAPS_API_KEY || "").trim(),
+        apiKey: requireEnv(env, "GOOGLE_MAPS_API_KEY"),
       },
     },
     adaptiveIcon: {

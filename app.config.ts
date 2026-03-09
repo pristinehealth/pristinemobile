@@ -47,7 +47,7 @@ const env = loadEnv();
 const config = {
   name: "PristineHealth",
   slug: "mobileapp",
-  scheme: requireEnv(env, "APP_SCHEME"),
+  scheme: (env.APP_SCHEME || "pristinemobile").trim(),
 
   version: "1.0.0",
   orientation: "portrait",

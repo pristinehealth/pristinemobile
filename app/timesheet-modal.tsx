@@ -15,20 +15,24 @@ export default function TimesheetModalScreen() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetchWithAuth(`/api/mobile/tasks`);
+                const res = await fetchWithAuth(`/api/mobile/tasks/${taskId}`);
                 const json = (await res.json()) as any;
 
                 if (json.success && json.data) {
-                    const foundTask = json.data.find((t: any) => String(t.id) === String(taskId));
-                    if (foundTask) {
-                        setTask(foundTask);
-                        // Find the most recently completed timesheet for this task, if any
-                        if (foundTask.timesheets && foundTask.timesheets.length > 0) {
-                            const completedTimesheets = foundTask.timesheets.filter((ts: any) => ts.end_time && ts.end_time !== "0");
-                            if (completedTimesheets.length > 0) {
-                                // Default to the last one logged
-                                setTimesheet(completedTimesheets[completedTimesheets.length - 1]);
-                            }
+                    const foundTask = json.data;
+                    setTask(foundTask);
+                    if (foundTask.timesheets && foundTask.timesheets.length > 0) {
+                        const toMs = (ts: any) => {
+                            const v = String(ts.end_time || '0');
+                            return /^\d{10,}$/.test(v)
+                                ? parseInt(v) * 1000
+                                : new Date(v.replace(' ', 'T')).getTime() || 0;
+                        };
+                        const completedTimesheets = foundTask.timesheets
+                            .filter((ts: any) => ts.end_time && ts.end_time !== "0")
+                            .sort((a: any, b: any) => toMs(b) - toMs(a)); // most recently ended first
+                        if (completedTimesheets.length > 0) {
+                            setTimesheet(completedTimesheets[0]);
                         }
                     }
                 }

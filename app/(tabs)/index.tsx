@@ -93,7 +93,8 @@ export default function HomeTab() {
 
         newTasks.forEach((t: any) => {
           if (t.status === "5") cCompleted++;
-          else if (!t.startdate) cUpcoming++;
+          else if (t.status === "4") cToday++; // In Progress → always Today
+          else if (!t.startdate || t.startdate === '0000-00-00') cUpcoming++;
           else if (t.startdate.split(' ')[0] === todayStr) cToday++;
           else cUpcoming++;
         });
@@ -153,31 +154,32 @@ export default function HomeTab() {
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
     if (activeFilter === 'Today') {
-      return t.status !== "5" && t.startdate && t.startdate.split(' ')[0] === todayStr;
+      // In Progress tasks always show in Today; also show Not Started tasks scheduled for today
+      return t.status !== "5" && (t.status === '4' || (t.startdate && t.startdate !== '0000-00-00' && t.startdate.split(' ')[0] === todayStr));
     }
     if (activeFilter === 'Upcoming') {
-      return t.status !== "5" && (!t.startdate || t.startdate.split(' ')[0] !== todayStr);
+      // Only Not Started tasks that aren't today
+      return t.status === '1' && (!t.startdate || t.startdate === '0000-00-00' || t.startdate.split(' ')[0] !== todayStr);
     }
     return true;
   }).sort((a, b) => {
     if (activeFilter === 'Completed') {
+      // Most recently completed first
       const getCompletionDateStr = (task: any) => {
         if (task.datefinished) return task.datefinished;
-        // Fallback: If no datefinished, look at the newest timesheet
         if (task.timesheets && task.timesheets.length > 0) {
           const maxEnd = Math.max(...task.timesheets.map((ts: any) => parseInt(ts.end_time || "0")));
-          if (maxEnd > 0) {
-            return new Date(maxEnd * 1000).toISOString().replace('T', ' ').split('.')[0];
-          }
+          if (maxEnd > 0) return new Date(maxEnd * 1000).toISOString().replace('T', ' ').split('.')[0];
         }
         return task.startdate || '';
       };
-
-      const aDate = getCompletionDateStr(a);
-      const bDate = getCompletionDateStr(b);
-      return bDate.localeCompare(aDate);
+      return getCompletionDateStr(b).localeCompare(getCompletionDateStr(a));
     }
-    return 0;
+
+    // Upcoming / Today / All — soonest startdate first, undated tasks go to the end
+    const aDate = a.startdate && a.startdate !== '0000-00-00' ? a.startdate : '9999-99-99';
+    const bDate = b.startdate && b.startdate !== '0000-00-00' ? b.startdate : '9999-99-99';
+    return aDate.localeCompare(bDate);
   });
 
   const renderItem = ({ item }: { item: any }) => {

@@ -49,15 +49,14 @@ export default function TaskDetailScreen() {
         })();
     }, []);
 
-    // Fetch Task Details
+    // Fetch Task Details — direct by ID to avoid pagination limits
     const fetchAllData = async (isRefresh = false) => {
         try {
-            const res = await fetchWithAuth(`/api/mobile/tasks${isRefresh ? '?refresh=true' : ''}`);
+            const res = await fetchWithAuth(`/api/mobile/tasks/${id}${isRefresh ? '?refresh=true' : ''}`);
             const json = (await res.json()) as any;
 
             if (json.success && json.data) {
-                const foundTask = json.data.find((t: any) => t.id === id);
-                setTask(foundTask);
+                setTask(json.data);
             }
         } catch (err) {
             console.error("Failed to load task details", err);
@@ -135,6 +134,7 @@ export default function TaskDetailScreen() {
                         if (!prev) return prev;
                         return {
                             ...prev,
+                            status: '4',
                             timesheets: [...(prev.timesheets || []), {
                                 task_id: id,
                                 start_time: String(Math.floor(Date.now() / 1000)),

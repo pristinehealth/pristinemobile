@@ -88,10 +88,10 @@ export default function EndShiftScreen() {
     useEffect(() => {
         const fetchTask = async () => {
             try {
-                const res = await fetchWithAuth("/api/mobile/tasks");
+                const res = await fetchWithAuth(`/api/mobile/tasks/${id}`);
                 const json = (await res.json()) as any;
                 if (json.success && json.data) {
-                    const foundTask = json.data.find((t: any) => String(t.id) === String(id));
+                    const foundTask = json.data;
                     setTask(foundTask);
 
                     if (foundTask && foundTask.checklist_items) {
@@ -147,7 +147,10 @@ export default function EndShiftScreen() {
     };
 
     const handleCompleteShift = async () => {
-        if (!task) return;
+        if (!task) {
+            Alert.alert("Error", "Shift data could not be loaded. Please go back and try again.");
+            return;
+        }
 
         // Validation pass
         let missing = false;
@@ -167,6 +170,16 @@ export default function EndShiftScreen() {
 
         if (isOutsideFacility && offSiteReason.trim() === '') {
             Alert.alert("Off-Site Clock-Out", "You are outside the facility. Please provide a reason for clocking out from this location.");
+            return;
+        }
+
+        if (!customerSignature) {
+            Alert.alert("Signature Required", "Please collect the client's signature before submitting.");
+            return;
+        }
+
+        if (!staffSignature) {
+            Alert.alert("Signature Required", "Please provide your caregiver signature before submitting.");
             return;
         }
 
@@ -381,7 +394,8 @@ export default function EndShiftScreen() {
 
                 {/* Signatures Area */}
                 <View style={{ marginBottom: 32 }}>
-                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 16 }}>Optional Signatures</Text>
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 4 }}>Signatures</Text>
+                    <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>Both signatures are required to submit the shift report.</Text>
 
                     {/* CLIENT SIGNATURE ROW */}
                     <View style={{ marginBottom: 16 }}>
@@ -398,7 +412,10 @@ export default function EndShiftScreen() {
                                     <MaterialCommunityIcons name="draw-pen" size={26} color="#3B6BB5" style={{ marginRight: 16 }} />
                                 )}
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Client Signature</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Client Signature</Text>
+                                        {!customerSignature && <Text style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}>*required</Text>}
+                                    </View>
                                     <Text style={{ fontSize: 13, color: customerSignature ? '#10B981' : '#6B7280', marginTop: 2 }}>{customerSignature ? 'Signature Saved. Tap to redo.' : 'Tap to open drawing pad'}</Text>
                                 </View>
                             </View>
@@ -421,7 +438,10 @@ export default function EndShiftScreen() {
                                     <MaterialCommunityIcons name="draw-pen" size={26} color="#3B6BB5" style={{ marginRight: 16 }} />
                                 )}
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Caregiver Signature</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Caregiver Signature</Text>
+                                        {!staffSignature && <Text style={{ fontSize: 12, color: '#EF4444', fontWeight: '600' }}>*required</Text>}
+                                    </View>
                                     <Text style={{ fontSize: 13, color: staffSignature ? '#10B981' : '#6B7280', marginTop: 2 }}>{staffSignature ? 'Signature Saved. Tap to redo.' : 'Tap to open drawing pad'}</Text>
                                 </View>
                             </View>

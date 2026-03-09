@@ -45,7 +45,7 @@ const env = loadEnv();
 
 // NOTE: do NOT include "expo-web-browser" in plugins (it is not a config plugin).
 const config = {
-  name: "mobileapp",
+  name: "PristineHealth",
   slug: "mobileapp",
   scheme: requireEnv(env, "APP_SCHEME"),
 
@@ -53,14 +53,18 @@ const config = {
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
-  icon: "./assets/images/icon.png",
+  icon: "./assets/icon.png",
 
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.pristinehealth.mobileapp",
+    icon: "./assets/icon.png",
+    config: {
+      googleMapsApiKey: requireEnv(env, "GOOGLE_MAPS_API_KEY"),
+    },
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
-        "Allow mobileapp to access your location while using the app to verify shift check-in at service facilities.",
+        "Allow PristineHealth to access your location while using the app to verify shift check-in at service facilities.",
       // Allow all HTTP/HTTPS traffic during development and to Render.com
       // (iOS App Transport Security would otherwise block non-HTTPS or untrusted certs)
       NSAppTransportSecurity: {
@@ -81,10 +85,8 @@ const config = {
       },
     },
     adaptiveIcon: {
-      backgroundColor: "#E6F4FE",
-      foregroundImage: "./assets/images/android-icon-foreground.png",
-      backgroundImage: "./assets/images/android-icon-background.png",
-      monochromeImage: "./assets/images/android-icon-monochrome.png",
+      foregroundImage: "./assets/icon.png",
+      backgroundColor: "#ffffff",
     },
   },
 
@@ -100,11 +102,11 @@ const config = {
     [
       "expo-splash-screen",
       {
-        image: "./assets/images/splash-icon.png",
+        image: "./assets/icon.png",
         imageWidth: 200,
         resizeMode: "contain",
         backgroundColor: "#ffffff",
-        dark: { backgroundColor: "#000000" },
+        dark: { backgroundColor: "#0f172a" },
       },
     ],
   ],

@@ -146,6 +146,19 @@ export default function TaskDetailScreen() {
                 Alert.alert(action === 'start' ? "Shift Started" : "Shift Ended",
                     action === 'start' ? "Your time is now being tracked locally." : "Timesheet successfully submitted and sent to the administrator for review.");
                 onRefresh();
+            } else if (res.status === 409 && json.active_task_id) {
+                // Another shift is already running — offer to deep-link to it
+                Alert.alert(
+                    'Shift Already Active',
+                    json.error || 'You have an open shift that must be ended first.',
+                    [
+                        {
+                            text: 'Go to Open Shift',
+                            onPress: () => router.push(`/tasks/${json.active_task_id}`)
+                        },
+                        { text: 'Cancel', style: 'cancel' }
+                    ]
+                );
             } else {
                 throw new Error(json.error || `Failed to ${action} shift`);
             }

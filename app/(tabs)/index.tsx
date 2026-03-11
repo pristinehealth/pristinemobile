@@ -1,6 +1,7 @@
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, ScrollView } from "react-native";
-import { useEffect, useState } from "react";
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, ScrollView, Animated } from "react-native";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from 'expo-router';
 import { fetchWithAuth } from "../../lib/api";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSocket, joinStaffRoom } from '../../lib/socket';
@@ -25,27 +26,41 @@ export default function HomeTab() {
   const router = useRouter();
 
   // ── Real-time socket listener ──────────────────────────────────────────
-  // Await joinStaffRoom() (which calls initSocket) before attaching the
-  // listener so getSocket() is guaranteed non-null when we use it.
   useEffect(() => {
     let active = true;
     const handler = () => {
       if (!active) return;
-      console.log('[Socket.IO] shift:ended received — refreshing tasks');
+      console.log('[Socket.IO] shift event received — refreshing tasks');
       loadTasks(true, 0);
     };
     (async () => {
-      await joinStaffRoom();      // authenticates & connects the socket
+      await joinStaffRoom();
       const socket = getSocket();
       if (!socket || !active) return;
       socket.on('shift:ended', handler);
+      socket.on('shift:started', handler);   // ← refresh on start too
     })();
     return () => {
       active = false;
       getSocket()?.off('shift:ended', handler);
+      getSocket()?.off('shift:started', handler);
     };
   }, []);
+
+  // ── Refresh whenever the tab comes back into focus ─────────────────────
+  // Catches status changes from starting/ending a shift on the detail screen.
+  useFocusEffect(
+    useCallback(() => {
+      loadTasks(true, 0);
+    }, [])
+  );
   // ──────────────────────────────────────────────────────────────────────────
+
+  // Helper: detect if a task has an open (unended) timesheet
+  const taskHasActiveShift = (t: any): boolean =>
+    (t.timesheets || []).some(
+      (ts: any) => ts.end_time === null || ts.end_time === '0' || ts.end_time === ''
+    );
 
   const loadTasks = async (isRefresh = false, currentStart = 0) => {
     try {
@@ -57,17 +72,14 @@ export default function HomeTab() {
         setLoading(true);
       }
 
-      // We ask the backend for the paginated slice
       const res = await fetchWithAuth(`/api/mobile/tasks?start=${currentStart}&length=${LENGTH}`);
       const json = (await res.json()) as any;
 
       if (json.success && json.data) {
-        // If it's a fresh wipe (refresh or initial load), replace the array. Otherwise append.
         let newTasks;
         if (currentStart === 0 || isRefresh) {
           newTasks = json.data;
         } else {
-          // Deduplicate by task id to prevent FlatList duplicate-key crashes
           const existingIds = new Set(tasks.map((t: any) => String(t.id)));
           const fresh = json.data.filter((t: any) => !existingIds.has(String(t.id)));
           newTasks = [...tasks, ...fresh];
@@ -76,15 +88,13 @@ export default function HomeTab() {
         setTasks(newTasks);
         setStartIdx(currentStart + LENGTH);
 
-        // Check if we've reached the end of the total dataset according to the backend meta
         if (json.meta && json.meta.total) {
           setHasMore(newTasks.length < json.meta.total);
         } else {
-          setHasMore(json.data.length === LENGTH); // Fallback: if we didn't receive a full page, we're at the end
+          setHasMore(json.data.length === LENGTH);
         }
 
-        // Calculate dynamic filter counts based on the *currently loaded* slice
-        // Note: For true global counts, the backend should ideally return them in `meta`.
+        // ── Counts calculation — tasks with an open timesheet always count as Today ──
         const now = new Date();
         const pad = (n: number) => n.toString().padStart(2, '0');
         const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -92,11 +102,19 @@ export default function HomeTab() {
         let cToday = 0, cUpcoming = 0, cCompleted = 0;
 
         newTasks.forEach((t: any) => {
-          if (t.status === "5") cCompleted++;
-          else if (t.status === "4") cToday++; // In Progress → always Today
-          else if (!t.startdate || t.startdate === '0000-00-00') cUpcoming++;
-          else if (t.startdate.split(' ')[0] === todayStr) cToday++;
-          else cUpcoming++;
+          const hasActive = taskHasActiveShift(t);
+          if (t.status === "5") {
+            cCompleted++;
+          } else if (t.status === "4" || hasActive) {
+            // In Progress or has open timesheet → always Today
+            cToday++;
+          } else if (!t.startdate || t.startdate === '0000-00-00') {
+            cUpcoming++;
+          } else if (t.startdate.split(' ')[0] === todayStr) {
+            cToday++;
+          } else {
+            cUpcoming++;
+          }
         });
 
         setCounts({
@@ -124,7 +142,7 @@ export default function HomeTab() {
   }, []);
 
   const onRefresh = () => {
-    setHasMore(true); // Reset endless scroll gate
+    setHasMore(true);
     loadTasks(true, 0);
   };
 
@@ -144,27 +162,50 @@ export default function HomeTab() {
     }
   };
 
+  // ── Active shift banner ──────────────────────────────────────────
+  const activeShiftTask = tasks.find((t) => t.status !== '5' && taskHasActiveShift(t));
+
+  // Derive the unix start_time from the open timesheet so we can show a live elapsed timer
+  const activeTimesheetEntry = activeShiftTask
+    ? (activeShiftTask.timesheets || []).find(
+      (ts: any) => ts.end_time === null || ts.end_time === '0' || ts.end_time === ''
+    )
+    : null;
+  const activeStartTimeUnix = activeTimesheetEntry
+    ? (/^\d+$/.test(String(activeTimesheetEntry.start_time))
+      ? parseInt(activeTimesheetEntry.start_time)
+      : Math.floor(new Date(String(activeTimesheetEntry.start_time).replace(' ', 'T')).getTime() / 1000))
+    : null;
+  // ──────────────────────────────────────────────────────────
+
   // Compute purely filtered list for UI rendering
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
   const filteredTasks = tasks.filter((t) => {
     if (activeFilter === 'All') return true;
     if (activeFilter === 'Completed') return t.status === "5";
 
-    const now = new Date();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const hasActive = taskHasActiveShift(t);
 
     if (activeFilter === 'Today') {
-      // In Progress tasks always show in Today; also show Not Started tasks scheduled for today
-      return t.status !== "5" && (t.status === '4' || (t.startdate && t.startdate !== '0000-00-00' && t.startdate.split(' ')[0] === todayStr));
+      // In Progress OR has an open timesheet (regardless of scheduled date) OR scheduled today
+      return t.status !== "5" && (
+        t.status === '4' ||
+        hasActive ||
+        (t.startdate && t.startdate !== '0000-00-00' && t.startdate.split(' ')[0] === todayStr)
+      );
     }
     if (activeFilter === 'Upcoming') {
-      // Only Not Started tasks that aren't today
-      return t.status === '1' && (!t.startdate || t.startdate === '0000-00-00' || t.startdate.split(' ')[0] !== todayStr);
+      // Only Not Started tasks with no open timesheet that aren't today
+      return t.status === '1' && !hasActive && (
+        !t.startdate || t.startdate === '0000-00-00' || t.startdate.split(' ')[0] !== todayStr
+      );
     }
     return true;
   }).sort((a, b) => {
     if (activeFilter === 'Completed') {
-      // Most recently completed first
       const getCompletionDateStr = (task: any) => {
         if (task.datefinished) return task.datefinished;
         if (task.timesheets && task.timesheets.length > 0) {
@@ -260,12 +301,12 @@ export default function HomeTab() {
                 const parts = item.startdate.split(/[ \-T:]/);
                 const targetDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
 
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
+                const nowD = new Date();
+                nowD.setHours(0, 0, 0, 0);
                 const targetMidnight = new Date(targetDate);
                 targetMidnight.setHours(0, 0, 0, 0);
 
-                const diffTime = targetMidnight.getTime() - now.getTime();
+                const diffTime = targetMidnight.getTime() - nowD.getTime();
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                 const dateString = targetDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -333,6 +374,120 @@ export default function HomeTab() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+
+      {/* ── Active Shift Card ─────────────────────────────────────── */}
+      {activeShiftTask && (() => {
+        // Pulsing dot animation
+        const pulseAnim = new Animated.Value(1);
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          ])
+        ).start();
+
+        // Inline elapsed timer
+        const ElapsedTimer = () => {
+          const [elapsed, setElapsed] = useState(0);
+          useEffect(() => {
+            if (!activeStartTimeUnix) return;
+            const initial = Math.max(0, Math.floor(Date.now() / 1000) - activeStartTimeUnix);
+            setElapsed(initial);
+            const id = setInterval(() => {
+              setElapsed(Math.max(0, Math.floor(Date.now() / 1000) - activeStartTimeUnix!));
+            }, 1000);
+            return () => clearInterval(id);
+          }, []);
+          const h = Math.floor(elapsed / 3600);
+          const m = Math.floor((elapsed % 3600) / 60);
+          const s = elapsed % 60;
+          const p = (n: number) => n.toString().padStart(2, '0');
+          return (
+            <Text style={{ fontSize: 28, fontWeight: '800', color: '#ffffff', fontVariant: ['tabular-nums'], letterSpacing: 1 }}>
+              {h > 0 ? `${p(h)}:${p(m)}:${p(s)}` : `${p(m)}:${p(s)}`}
+            </Text>
+          );
+        };
+
+        return (
+          <TouchableOpacity
+            activeOpacity={0.92}
+            onPress={() => router.push(`/tasks/${activeShiftTask.id}`)}
+            style={{
+              marginHorizontal: 16,
+              marginTop: 16,
+              marginBottom: 4,
+              backgroundColor: '#0F2027',
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: '#1E3A2F',
+              shadowColor: '#10B981',
+              shadowOpacity: 0.25,
+              shadowOffset: { width: 0, height: 6 },
+              shadowRadius: 16,
+              elevation: 8,
+            }}
+          >
+            {/* Top row: live dot + SHIFT IN PROGRESS label + timer */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+              {/* Pulsing dot */}
+              <View style={{ width: 24, height: 24, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                <View style={{ position: 'absolute', width: 24, height: 24, borderRadius: 12, backgroundColor: '#10B981', opacity: 0.2 }} />
+                <Animated.View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#10B981', opacity: pulseAnim }} />
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#10B981', letterSpacing: 2, textTransform: 'uppercase', flex: 1 }}>
+                Shift in Progress
+              </Text>
+              {/* Elapsed timer */}
+              {activeStartTimeUnix ? <ElapsedTimer /> : (
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#6B7280' }}>--:--</Text>
+              )}
+            </View>
+
+            {/* Divider */}
+            <View style={{ height: 1, backgroundColor: '#1E3A2F', marginBottom: 14 }} />
+
+            {/* Task info */}
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#F9FAFB', marginBottom: 4 }} numberOfLines={1}>
+                {activeShiftTask.name}
+              </Text>
+              {activeShiftTask.project_data?.name && (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialCommunityIcons name="office-building-outline" size={13} color="#6B7280" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 13, color: '#9CA3AF' }} numberOfLines={1}>
+                    {activeShiftTask.project_data.name}
+                  </Text>
+                </View>
+              )}
+              {activeShiftTask.project_data?.extracted_address ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <MaterialCommunityIcons name="map-marker-outline" size={13} color="#6B7280" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 13, color: '#9CA3AF' }} numberOfLines={1}>
+                    {activeShiftTask.project_data.extracted_address}
+                    {activeShiftTask.project_data.extracted_city ? `, ${activeShiftTask.project_data.extracted_city}` : ''}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* CTA */}
+            <View style={{
+              backgroundColor: '#EF4444',
+              borderRadius: 12,
+              paddingVertical: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <MaterialCommunityIcons name="stop-circle-outline" size={18} color="#ffffff" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#ffffff', fontSize: 15, fontWeight: '700' }}>End Shift</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })()}
+      {/* ───────────────────────────────────────────────────────────── */}
 
       {/* Horizontal Filter Bar */}
       <View style={{ backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>

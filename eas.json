@@ -8,6 +8,7 @@
             "developmentClient": true,
             "distribution": "internal",
             "env": {
+                "RCT_NEW_ARCH_ENABLED": "1",
                 "APP_SCHEME": "pristinemobile",
                 "API_BASE_URL": "https://backend-vnu9.onrender.com",
                 "MICROSOFT_CLIENT_ID": "your_microsoft_client_id",
@@ -19,6 +20,7 @@
         "preview": {
             "distribution": "internal",
             "env": {
+                "RCT_NEW_ARCH_ENABLED": "1",
                 "APP_SCHEME": "pristinemobile",
                 "API_BASE_URL": "https://backend-vnu9.onrender.com",
                 "MICROSOFT_CLIENT_ID": "your_microsoft_client_id",
@@ -30,6 +32,7 @@
         "production": {
             "autoIncrement": true,
             "env": {
+                "RCT_NEW_ARCH_ENABLED": "1",
                 "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
                 "APP_SCHEME": "pristinemobile",
                 "API_BASE_URL": "https://backend-vnu9.onrender.com",

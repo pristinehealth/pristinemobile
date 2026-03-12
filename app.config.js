@@ -2,7 +2,11 @@
 function requireEnv(key) {
   const v = process.env[key];
   if (!v || !v.trim()) {
-    throw new Error(`Missing ${key} in environment`);
+    // Warn only — do NOT throw. EAS CLI reads this config before build-time
+    // secrets are injected. Throwing here breaks eas secret:create, eas build, etc.
+    // The real value will be provided by EAS secrets / local .env during actual builds.
+    console.warn(`[app.config.js] Warning: ${key} is not set in environment`);
+    return undefined;
   }
   return v.trim();
 }

@@ -5,7 +5,7 @@ import { fetchWithAuth } from "../../lib/api";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import LiveTimer from "../../components/LiveTimer";
 import * as Location from 'expo-location';
-import MapView, { Marker, Circle } from 'react-native-maps';
+import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 
 // Haversine formula to get distance in meters
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -435,6 +435,7 @@ export default function TaskDetailScreen() {
                         </View>
                         <MapView
                             ref={mapRef}
+                            provider={PROVIDER_GOOGLE}
                             style={{ flex: 1 }}
                             initialRegion={{
                                 latitude: targetLat!,
@@ -444,6 +445,7 @@ export default function TaskDetailScreen() {
                             }}
                             showsUserLocation={locationPermission}
                             showsMyLocationButton={locationPermission}
+                            onMapReady={() => console.log('[Map] onMapReady — tiles loading for', targetLat, targetLng)}
                         >
                             <Circle
                                 center={{ latitude: targetLat!, longitude: targetLng! }}

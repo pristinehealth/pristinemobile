@@ -19,7 +19,7 @@ module.exports = {
   version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
+  newArchEnabled: false,
   icon: "./assets/icon.png",
 
   ios: {

@@ -27,9 +27,13 @@ module.exports = {
     bundleIdentifier: "com.pristinehealth.mobileapp",
     deploymentTarget: "16.0",
     icon: "./assets/icon.png",
-    config: {
-      googleMapsApiKey: requireEnv("GOOGLE_MAPS_API_KEY"),
-    },
+    // Only inject a Google Maps key if explicitly provided.
+    // Without it, react-native-maps falls back to Apple Maps (MapKit) — no key needed.
+    ...(process.env.GOOGLE_MAPS_API_KEY && {
+      config: {
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY.trim(),
+      },
+    }),
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSLocationWhenInUseUsageDescription:

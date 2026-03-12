@@ -31,3 +31,6 @@ yarn-error.log*
 
 expo-env.d.ts
 # @end expo-cli
+# CNG — generated native folders
+/ios
+/android

@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 
 function requireEnv(key) {
   const v = process.env[key];

@@ -1,7 +1,7 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState, createContext, useContext } from "react";
 import * as SecureStore from 'expo-secure-store';
-import { View, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ActivityIndicator, Alert } from "react-native";
 import { disconnectSocket, joinStaffRoom } from '../lib/socket';
 import { onSessionExpired } from '../lib/auth-events';
 
@@ -103,8 +103,35 @@ function AuthProvider({ children }: { children: React.ReactNode }) {
 
   if (!isReady) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#3B6BB5" />
+      <View style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: '#3B6BB5',
+      }}>
+        <View style={{
+          backgroundColor: '#ffffff',
+          borderRadius: 24,
+          padding: 32,
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOpacity: 0.2,
+          shadowOffset: { width: 0, height: 8 },
+          shadowRadius: 24,
+          elevation: 12,
+          marginBottom: 40,
+        }}>
+          <Text style={{ fontSize: 32, fontWeight: '900', color: '#3B6BB5', letterSpacing: -1 }}>
+            Pristine
+          </Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280', marginTop: 4 }}>
+            Health Staffing
+          </Text>
+        </View>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={{ color: 'rgba(255,255,255,0.7)', marginTop: 16, fontSize: 14, fontWeight: '500' }}>
+          Starting up...
+        </Text>
       </View>
     );
   }

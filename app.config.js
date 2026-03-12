@@ -31,6 +31,7 @@ module.exports = {
       googleMapsApiKey: requireEnv("GOOGLE_MAPS_API_KEY"),
     },
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSLocationWhenInUseUsageDescription:
         "Allow PristineHealth to access your location while using the app to verify shift check-in at service facilities.",
       NSAppTransportSecurity: {

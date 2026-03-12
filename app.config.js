@@ -25,6 +25,7 @@ module.exports = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.pristinehealth.mobileapp",
+    deploymentTarget: "15.1",
     icon: "./assets/icon.png",
     config: {
       googleMapsApiKey: requireEnv("GOOGLE_MAPS_API_KEY"),

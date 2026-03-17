@@ -48,15 +48,22 @@ export default function ForgotPasswordScreen() {
 
         setIsLoading(true);
         try {
-            await fetch(`${API_BASE_URL}/api/mobile/auth/request-otp`, {
+            const res = await fetch(`${API_BASE_URL}/api/mobile/auth/request-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email.trim().toLowerCase(), purpose: 'reset' }),
             });
+            const data = await res.json() as any;
+
+            if (!res.ok) {
+                Alert.alert("Error", data.error || "Failed to send reset code. Please try again.");
+                return;
+            }
+
             startCooldown();
             setStep('OTP');
         } catch {
-            Alert.alert("Error", "Failed to send reset code. Please try again.");
+            Alert.alert("Error", "Failed to connect to the server. Please check your network connection.");
         } finally {
             setIsLoading(false);
         }

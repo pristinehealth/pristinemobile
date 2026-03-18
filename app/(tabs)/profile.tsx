@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl, Alert } from "react-native";
 import { useEffect, useState } from "react";
 import { fetchWithAuth } from "../../lib/api";
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,12 +8,54 @@ export default function ProfileTab() {
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const { signOut } = useAuth();
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            "Delete Account",
+            "Are you sure you want to delete your account? This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        setDeleting(true);
+                        try {
+                            const res = await fetchWithAuth("/api/mobile/profile", { method: 'DELETE' });
+                            const text = await res.text();
+                            
+                            let json: any = {};
+                            try {
+                                json = text ? JSON.parse(text) : {};
+                            } catch (e) {
+                                console.error("API Error Response Text:", text);
+                            }
+
+                            if (res.ok && (json.success || text === "")) {
+                                Alert.alert("Account Deleted", "Your account has been successfully deleted.", [
+                                    { text: "OK", onPress: signOut }
+                                ]);
+                            } else {
+                                Alert.alert("Error", json.error || `Failed to delete account (Status: ${res.status})`);
+                            }
+                        } catch (err: any) {
+                            console.error("Failed to delete account", err);
+                            Alert.alert("Error", err.message || "Failed to connect to server");
+                        } finally {
+                            setDeleting(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const loadProfile = async () => {
         try {
             const res = await fetchWithAuth("/api/mobile/profile");
-            const json = await res.json();
+            const json: any = await res.json();
             if (json.success && json.data) {
                 setProfile(json.data);
             }
@@ -113,6 +155,30 @@ export default function ProfileTab() {
                     >
                         <MaterialCommunityIcons name="logout" size={20} color="#DC2626" style={{ marginRight: 8 }} />
                         <Text style={{ color: '#DC2626', fontSize: 16, fontWeight: '700' }}>Log Out from Device</Text>
+                    </TouchableOpacity>
+
+                    {/* Delete Account Button */}
+                    <TouchableOpacity
+                        onPress={handleDeleteAccount}
+                        disabled={deleting}
+                        style={{
+                            paddingVertical: 18,
+                            borderRadius: 16,
+                            alignItems: 'center',
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            marginTop: 48,
+                            borderWidth: 1,
+                            borderColor: '#FEE2E2',
+                            opacity: deleting ? 0.5 : 1
+                        }}
+                    >
+                        {deleting ? (
+                            <ActivityIndicator color="#DC2626" style={{ marginRight: 8 }} />
+                        ) : (
+                            <MaterialCommunityIcons name="delete-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
+                        )}
+                        <Text style={{ color: '#DC2626', fontSize: 16, fontWeight: '700' }}>Delete My Account</Text>
                     </TouchableOpacity>
 
                 </ScrollView>

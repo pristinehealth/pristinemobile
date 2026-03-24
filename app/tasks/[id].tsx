@@ -326,7 +326,7 @@ export default function TaskDetailScreen() {
                     <View style={{ flex: 1, backgroundColor: '#ffffff', padding: 16, borderRadius: 16, marginRight: 8, borderWidth: 1, borderColor: '#E5E7EB' }}>
                         <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 4 }}>DATE</Text>
                         <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827' }}>
-                            {task.startdate ? new Date(task.startdate.replace(' ', 'T')).toLocaleDateString() : 'Unscheduled'}
+                            {task.startdate ? new Date(task.startdate.split(' ')[0] + 'T12:00:00').toLocaleDateString() : 'Unscheduled'}
                         </Text>
                     </View>
                     <View style={{ flex: 1, backgroundColor: '#ffffff', padding: 16, borderRadius: 16, marginLeft: 8, borderWidth: 1, borderColor: '#E5E7EB' }}>
